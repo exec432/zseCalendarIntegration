@@ -1,0 +1,41 @@
+name: Aktualizuj plan lekcji
+
+on:
+  # Uruchamia się automatycznie w każdy poniedziałek o 6:00 (przed lekcjami)
+  schedule:
+    - cron: "0 5 * * 1" # 5:00 UTC = 6:00 lub 7:00 czasu polskiego
+
+  # Możliwość ręcznego uruchomienia z panelu GitHub
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  generuj-ics:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📂 Pobierz repozytorium
+        uses: actions/checkout@v4
+
+      - name: 🐍 Ustaw Pythona
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 📦 Zainstaluj zależności
+        run: pip install requests beautifulsoup4 icalendar
+
+      - name: 🏃 Uruchom scraper
+        run: python scraper.py
+
+      - name: 📤 Wypchnij plan.ics do repozytorium
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add plan.ics
+          git diff --cached --quiet || git commit -m "🔄 Aktualizacja planu $(date '+%Y-%m-%d')"
+          git push
