@@ -2,6 +2,7 @@
 """
 ZSE Bydgoszcz — plan lekcji → .ics (bieżący tydzień)
 Grupy: WF = j1 (1/2), pozostałe = 2/2. Religia usunięta.
+Dni ze świętami państwowymi są automatycznie pomijane.
 """
 
 import re
@@ -9,6 +10,7 @@ import sys
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+import holidays
 import requests
 from bs4 import BeautifulSoup, Tag
 from icalendar import Calendar, Event
@@ -35,37 +37,44 @@ LESSON_TIMES = {
 
 def should_include(subj: str) -> bool:
     """
-    Zwraca True jeśli lekcja ma być w kalendarzu.
-
-    Reguły:
-      - religia           → zawsze wyklucz
-      - wf-j2 / #4DI      → wyklucz (to grupa 2 z WF; zostaje wf-j1)
-      - cokolwiek-1/2     → wyklucz (zostaje -2/2 dla pozostałych przedmiotów)
-      - ABD-1/2           → wyklucz (j.angielski i ABD: zostaje -2/2)
-      - reszta            → uwzględnij
+    Reguły filtrowania grup i religii:
+      - religia       → wyklucz
+      - wf-j2 / #4DI  → wyklucz (zostaje wf-j1)
+      - coś-1/2       → wyklucz (zostaje -2/2)
     """
     s = subj.lower()
-
-    # Religia — zawsze wyrzuć
     if "religia" in s:
         return False
-
-    # WF: wyrzuć grupę j2 i wpisy #4DI (brak nauczyciela = druga grupa)
     if re.search(r"wf-?j2", s):
         return False
     if s.startswith("#"):
         return False
-
-    # Przedmioty z podziałem na grupy: wyrzuć -1/2, zostaw -2/2
     if re.search(r"-1/2", s):
         return False
-
     return True
 
 
 def get_current_monday() -> date:
     today = date.today()
     return today - timedelta(days=today.weekday())
+
+
+def get_holidays_this_week(monday: date) -> dict:
+    """
+    Zwraca {data: nazwa} dla polskich świąt państwowych przypadających
+    w dniach Pn–Pt danego tygodnia. Biblioteka `holidays` zawiera
+    oficjalne święta z Dz.U. i automatycznie oblicza ruchome daty
+    (Wielkanoc, Boże Ciało, Zielone Świątki).
+    """
+    years = {monday.year, (monday + timedelta(days=4)).year}
+    pl = holidays.Poland(years=years)
+
+    result = {}
+    for offset in range(5):
+        day = monday + timedelta(days=offset)
+        if day in pl:
+            result[day] = pl[day]
+    return result
 
 
 def fetch_html(url: str) -> str:
@@ -122,7 +131,6 @@ def parse_plan(html: str) -> list[dict]:
                 continue
 
             for i, t_link in enumerate(teacher_links):
-                # Znajdź span.p bezpośrednio przed tym linkiem nauczyciela
                 subj = ""
                 prev = t_link.previous_sibling
                 while prev:
@@ -144,13 +152,10 @@ def parse_plan(html: str) -> list[dict]:
                 if not subj:
                     subj = "?"
 
-                # ── FILTROWANIE GRUP I RELIGII ──
                 if not should_include(subj):
                     continue
 
-                # Usuń sufiks grupy z nazwy wyświetlanej (-2/2 → czysta nazwa)
                 display_subj = re.sub(r"-2/2$", "", subj).strip(" -")
-
                 room = room_links[i].get_text(strip=True) if i < len(room_links) else ""
 
                 lessons.append({
@@ -164,7 +169,11 @@ def parse_plan(html: str) -> list[dict]:
     return lessons
 
 
-def build_ics(lessons: list[dict], monday: date) -> bytes:
+def build_ics(lessons: list[dict], monday: date, skip_days: set) -> bytes:
+    """
+    Buduje plik ICS. Lekcje przypadające na dni ze świętami (skip_days)
+    są pomijane.
+    """
     cal = Calendar()
     cal.add("PRODID", "-//ZSE Bydgoszcz Plan 4I//PL")
     cal.add("VERSION", "2.0")
@@ -173,12 +182,18 @@ def build_ics(lessons: list[dict], monday: date) -> bytes:
     cal.add("X-WR-TIMEZONE", "Europe/Warsaw")
 
     seen_uids: set[str] = set()
+    skipped = 0
 
     for lesson in lessons:
-        no      = lesson["lesson_no"]
-        sh, sm, eh, em = LESSON_TIMES[no]
-        day     = monday + timedelta(days=lesson["day_index"])
+        no  = lesson["lesson_no"]
+        day = monday + timedelta(days=lesson["day_index"])
 
+        # Pomiń lekcje w dni świąteczne
+        if day in skip_days:
+            skipped += 1
+            continue
+
+        sh, sm, eh, em = LESSON_TIMES[no]
         dtstart = datetime(day.year, day.month, day.day, sh, sm, tzinfo=TIMEZONE)
         dtend   = datetime(day.year, day.month, day.day, eh, em, tzinfo=TIMEZONE)
 
@@ -186,8 +201,7 @@ def build_ics(lessons: list[dict], monday: date) -> bytes:
         teacher = lesson["teacher"]
         room    = lesson["room"]
 
-        summary = subj
-        desc    = (
+        desc = (
             f"Nauczyciel: {teacher}\n"
             f"Sala: {room}\n"
             f"Lekcja {no}: {sh:02d}:{sm:02d}–{eh:02d}:{em:02d}"
@@ -203,13 +217,16 @@ def build_ics(lessons: list[dict], monday: date) -> bytes:
         seen_uids.add(uid)
 
         event = Event()
-        event.add("SUMMARY",     summary)
+        event.add("SUMMARY",     subj)
         event.add("DTSTART",     dtstart)
         event.add("DTEND",       dtend)
         event.add("DESCRIPTION", desc)
         event.add("LOCATION",    f"Sala {room}, ZSE Bydgoszcz" if room else "ZSE Bydgoszcz")
         event.add("UID",         f"{uid}@zse.bydgoszcz.pl")
         cal.add_component(event)
+
+    if skipped:
+        print(f"🎉 Pominięto {skipped} lekcji z powodu świąt")
 
     return cal.to_ical()
 
@@ -227,6 +244,14 @@ def main():
     monday = get_current_monday()
     print(f"📅 Tydzień: {monday} – {monday + timedelta(days=4)}")
 
+    # Sprawdź święta
+    week_holidays = get_holidays_this_week(monday)
+    if week_holidays:
+        for d, name in sorted(week_holidays.items()):
+            print(f"🎉 Święto w tym tygodniu: {d.strftime('%A %d.%m')} – {name}")
+    else:
+        print("✅ Brak świąt w tym tygodniu")
+
     lessons = parse_plan(html)
     print(f"✅ Znaleziono {len(lessons)} par lekcyjnych")
 
@@ -234,7 +259,9 @@ def main():
         print("ℹ️  Brak lekcji – nie nadpisuję pliku.")
         sys.exit(0)
 
-    ics = build_ics(lessons, monday)
+    skip_days = set(week_holidays.keys())
+    ics = build_ics(lessons, monday, skip_days)
+
     with open(OUTPUT_FILE, "wb") as f:
         f.write(ics)
 
