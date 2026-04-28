@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 ZSE Bydgoszcz — plan lekcji → .ics (bieżący tydzień)
-Lokalnie: python3 scraper.py
-GitHub Actions: uruchamia co poniedziałek i pushuje plan.ics na GitHub Pages.
+Grupy: WF = j1 (1/2), pozostałe = 2/2. Religia usunięta.
 """
 
 import re
@@ -32,7 +31,36 @@ LESSON_TIMES = {
     9:  (15, 40, 16, 25),
     10: (16, 35, 17, 20),
 }
-# ─────────────────────────────────────────────
+
+
+def should_include(subj: str) -> bool:
+    """
+    Zwraca True jeśli lekcja ma być w kalendarzu.
+
+    Reguły:
+      - religia           → zawsze wyklucz
+      - wf-j2 / #4DI      → wyklucz (to grupa 2 z WF; zostaje wf-j1)
+      - cokolwiek-1/2     → wyklucz (zostaje -2/2 dla pozostałych przedmiotów)
+      - ABD-1/2           → wyklucz (j.angielski i ABD: zostaje -2/2)
+      - reszta            → uwzględnij
+    """
+    s = subj.lower()
+
+    # Religia — zawsze wyrzuć
+    if "religia" in s:
+        return False
+
+    # WF: wyrzuć grupę j2 i wpisy #4DI (brak nauczyciela = druga grupa)
+    if re.search(r"wf-?j2", s):
+        return False
+    if s.startswith("#"):
+        return False
+
+    # Przedmioty z podziałem na grupy: wyrzuć -1/2, zostaw -2/2
+    if re.search(r"-1/2", s):
+        return False
+
+    return True
 
 
 def get_current_monday() -> date:
@@ -53,7 +81,7 @@ def fetch_html(url: str) -> str:
     }
     resp = requests.get(url, headers=headers, timeout=20)
     if resp.status_code == 403:
-        print("❌ Serwer zwrócił 403 – skrypt musi działać lokalnie (Twoje IP), nie z serwera.")
+        print("❌ Serwer zwrócił 403 – uruchom skrypt lokalnie (nie z serwera).")
         sys.exit(1)
     resp.raise_for_status()
     resp.encoding = "utf-8"
@@ -61,16 +89,11 @@ def fetch_html(url: str) -> str:
 
 
 def parse_plan(html: str) -> list[dict]:
-    """
-    Parser dla planu Optivum z ZSE Bydgoszcz.
-    Struktura komórki: <span class="p">PRZEDMIOT</span> <a class="n">NAUCZYCIEL</a> <a class="s">SALA</a>
-    Kilka grup w jednej komórce = kilka takich trójek (rozdzielone <br>).
-    """
     soup = BeautifulSoup(html, "html.parser")
 
     plan_table = soup.find("table", class_="tabela")
     if not plan_table:
-        print("❌ Nie znaleziono tabeli class='tabela'. Sprawdź czy URL jest poprawny.")
+        print("❌ Nie znaleziono tabeli class='tabela'.")
         sys.exit(1)
 
     lessons = []
@@ -88,7 +111,6 @@ def parse_plan(html: str) -> list[dict]:
         if lesson_no not in LESSON_TIMES:
             continue
 
-        # cells[2..6] = Pn, Wt, Śr, Cz, Pt
         for day_idx, cell in enumerate(cells[2:7]):
             if not cell.get_text(strip=True).replace('\xa0', '').strip():
                 continue
@@ -100,7 +122,7 @@ def parse_plan(html: str) -> list[dict]:
                 continue
 
             for i, t_link in enumerate(teacher_links):
-                # Znajdź span.p bezpośrednio poprzedzający ten link nauczyciela
+                # Znajdź span.p bezpośrednio przed tym linkiem nauczyciela
                 subj = ""
                 prev = t_link.previous_sibling
                 while prev:
@@ -114,7 +136,6 @@ def parse_plan(html: str) -> list[dict]:
                             break
                     prev = prev.previous_sibling
 
-                # Fallback: i-ty span.p w komórce
                 if not subj:
                     all_p = cell.find_all("span", class_="p")
                     if i < len(all_p):
@@ -123,12 +144,19 @@ def parse_plan(html: str) -> list[dict]:
                 if not subj:
                     subj = "?"
 
+                # ── FILTROWANIE GRUP I RELIGII ──
+                if not should_include(subj):
+                    continue
+
+                # Usuń sufiks grupy z nazwy wyświetlanej (-2/2 → czysta nazwa)
+                display_subj = re.sub(r"-2/2$", "", subj).strip(" -")
+
                 room = room_links[i].get_text(strip=True) if i < len(room_links) else ""
 
                 lessons.append({
                     "lesson_no": lesson_no,
                     "day_index": day_idx,
-                    "subject":   subj,
+                    "subject":   display_subj,
                     "teacher":   t_link.get_text(strip=True),
                     "room":      room,
                 })
@@ -158,7 +186,7 @@ def build_ics(lessons: list[dict], monday: date) -> bytes:
         teacher = lesson["teacher"]
         room    = lesson["room"]
 
-        summary = f"{subj} [{room}]" if room else subj
+        summary = subj
         desc    = (
             f"Nauczyciel: {teacher}\n"
             f"Sala: {room}\n"
