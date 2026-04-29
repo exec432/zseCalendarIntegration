@@ -138,7 +138,20 @@ function parseHTML(html, config) {
         ...cell.matchAll(/<span[^>]*class="p"[^>]*>(.*?)<\/span>/gi),
       ];
 
-      if (!teacherLinks.length) continue;
+      // Specjalny przypadek: WF grupy j2 nie ma linku nauczyciela
+      // HTML: <span class="p">wf</span>-j2 <span class="p">#4DI</span> <a class="s">Hala</a>
+      if (!teacherLinks.length) {
+        if (/wf<\/span>-j2/i.test(cell) && shouldInclude("wf-j2", config)) {
+          lessons.push({
+            lessonNo,
+            dayIdx,
+            subject: "wf",
+            teacher: "",
+            room: roomLinks[0] ? stripTags(roomLinks[0][1]) : "",
+          });
+        }
+        continue;
+      }
 
       for (let i = 0; i < teacherLinks.length; i++) {
         const rawSubj = subjSpans[i]
@@ -204,7 +217,13 @@ function buildICS(lessons, monday, skipDays) {
     while (seen.has(uid)) uid = `${uid}-${n++}`;
     seen.add(uid);
 
-    const desc = `Nauczyciel: ${lesson.teacher}\\nSala: ${lesson.room}\\nLekcja ${lesson.lessonNo}: ${pad(sh)}:${pad(sm)}-${pad(eh)}:${pad(em)}`;
+    const descParts = [];
+    if (lesson.teacher) descParts.push(`Nauczyciel: ${lesson.teacher}`);
+    if (lesson.room) descParts.push(`Sala: ${lesson.room}`);
+    descParts.push(
+      `Lekcja ${lesson.lessonNo}: ${pad(sh)}:${pad(sm)}-${pad(eh)}:${pad(em)}`,
+    );
+    const desc = descParts.join("\\n");
 
     lines.push(
       "BEGIN:VEVENT",
