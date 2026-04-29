@@ -8,16 +8,16 @@
 const PLAN_URL = "https://plan.zse.bydgoszcz.pl/plany/o24.html";
 
 const LESSON_TIMES = {
-  0:  [7,  5,  7, 50],
-  1:  [8,  0,  8, 45],
-  2:  [8, 55,  9, 40],
-  3:  [9, 50, 10, 35],
-  4:  [10, 45, 11, 30],
-  5:  [11, 40, 12, 25],
-  6:  [12, 45, 13, 30],
-  7:  [13, 40, 14, 25],
-  8:  [14, 45, 15, 30],
-  9:  [15, 40, 16, 25],
+  0: [7, 5, 7, 50],
+  1: [8, 0, 8, 45],
+  2: [8, 55, 9, 40],
+  3: [9, 50, 10, 35],
+  4: [10, 45, 11, 30],
+  5: [11, 40, 12, 25],
+  6: [12, 45, 13, 30],
+  7: [13, 40, 14, 25],
+  8: [14, 45, 15, 30],
+  9: [15, 40, 16, 25],
   10: [16, 35, 17, 20],
 };
 
@@ -49,7 +49,7 @@ function easter(year) {
   const l = (32 + 2 * e + 2 * i - h - k) % 7;
   const m = Math.floor((a + 11 * h + 22 * l) / 451);
   const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day   = ((h + l - 7 * m + 114) % 31) + 1;
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
   return new Date(Date.UTC(year, month - 1, day));
 }
 
@@ -69,10 +69,10 @@ function getPolishHolidays(year) {
     return d.toISOString().slice(0, 10);
   };
 
-  holidays.add(addDays(e, 0));   // Niedziela Wielkanocna
-  holidays.add(addDays(e, 1));   // Poniedziałek Wielkanocny
-  holidays.add(addDays(e, 49));  // Zielone Świątki (7 tyg.)
-  holidays.add(addDays(e, 60));  // Boże Ciało (8 tyg. + 4 dni)
+  holidays.add(addDays(e, 0)); // Niedziela Wielkanocna
+  holidays.add(addDays(e, 1)); // Poniedziałek Wielkanocny
+  holidays.add(addDays(e, 49)); // Zielone Świątki (7 tyg.)
+  holidays.add(addDays(e, 60)); // Boże Ciało (8 tyg. + 4 dni)
 
   return holidays;
 }
@@ -83,24 +83,30 @@ function shouldInclude(subj, config) {
   const s = subj.toLowerCase();
 
   if (s.includes("religia")) return config.religia === "1";
-  if (/wf-?j/.test(s))      return config.wf === "1" ? /wf-?j1/.test(s) : /wf-?j2/.test(s);
-  if (s.startsWith("#"))     return config.wf === "2";
-  if (/-1\/2/.test(s))       return config.group === "1";
-  if (/-2\/2/.test(s))       return config.group === "2";
+  if (/wf-?j/.test(s))
+    return config.wf === "1" ? /wf-?j1/.test(s) : /wf-?j2/.test(s);
+  if (s.startsWith("#")) return config.wf === "2";
+  if (/-1\/2/.test(s)) return config.group === "1";
+  if (/-2\/2/.test(s)) return config.group === "2";
 
   return true;
 }
 
 function stripTags(html) {
-  return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return html
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function splitCells(rowHTML) {
-  return [...rowHTML.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(m => m[1]);
+  return [...rowHTML.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map((m) => m[1]);
 }
 
 function parseHTML(html, config) {
-  const tableMatch = html.match(/<table[^>]*class="tabela"[^>]*>([\s\S]*?)<\/table>/i);
+  const tableMatch = html.match(
+    /<table[^>]*class="tabela"[^>]*>([\s\S]*?)<\/table>/i,
+  );
   if (!tableMatch) throw new Error("Nie znaleziono tabeli planu");
 
   const rows = tableMatch[1].split(/<tr[\s>]/i).slice(1);
@@ -115,16 +121,29 @@ function parseHTML(html, config) {
 
     for (let dayIdx = 0; dayIdx < 5; dayIdx++) {
       const cell = cells[dayIdx + 2];
-      if (!stripTags(cell).replace(/\u00a0/g, "").trim()) continue;
+      if (
+        !stripTags(cell)
+          .replace(/\u00a0/g, "")
+          .trim()
+      )
+        continue;
 
-      const teacherLinks = [...cell.matchAll(/<a[^>]*class="n"[^>]*>(.*?)<\/a>/gi)];
-      const roomLinks    = [...cell.matchAll(/<a[^>]*class="s"[^>]*>(.*?)<\/a>/gi)];
-      const subjSpans    = [...cell.matchAll(/<span[^>]*class="p"[^>]*>(.*?)<\/span>/gi)];
+      const teacherLinks = [
+        ...cell.matchAll(/<a[^>]*class="n"[^>]*>(.*?)<\/a>/gi),
+      ];
+      const roomLinks = [
+        ...cell.matchAll(/<a[^>]*class="s"[^>]*>(.*?)<\/a>/gi),
+      ];
+      const subjSpans = [
+        ...cell.matchAll(/<span[^>]*class="p"[^>]*>(.*?)<\/span>/gi),
+      ];
 
       if (!teacherLinks.length) continue;
 
       for (let i = 0; i < teacherLinks.length; i++) {
-        const rawSubj = subjSpans[i] ? stripTags(subjSpans[i][1]) : stripTags(cell).split(" ")[0];
+        const rawSubj = subjSpans[i]
+          ? stripTags(subjSpans[i][1])
+          : stripTags(cell).split(" ")[0];
         if (!shouldInclude(rawSubj, config)) continue;
 
         const displaySubj = rawSubj
@@ -137,7 +156,7 @@ function parseHTML(html, config) {
           dayIdx,
           subject: displaySubj,
           teacher: stripTags(teacherLinks[i][1]),
-          room:    roomLinks[i] ? stripTags(roomLinks[i][1]) : "",
+          room: roomLinks[i] ? stripTags(roomLinks[i][1]) : "",
         });
       }
     }
@@ -148,10 +167,12 @@ function parseHTML(html, config) {
 
 // ── ICS BUILDER ─────────────────────────────────────
 
-function pad(n) { return String(n).padStart(2, "0"); }
+function pad(n) {
+  return String(n).padStart(2, "0");
+}
 
 function fmtDateTime(date, h, m) {
-  return `${date.getUTCFullYear()}${pad(date.getUTCMonth()+1)}${pad(date.getUTCDate())}T${pad(h)}${pad(m)}00`;
+  return `${date.getUTCFullYear()}${pad(date.getUTCMonth() + 1)}${pad(date.getUTCDate())}T${pad(h)}${pad(m)}00`;
 }
 
 function buildICS(lessons, monday, skipDays) {
@@ -175,10 +196,10 @@ function buildICS(lessons, monday, skipDays) {
 
     const [sh, sm, eh, em] = LESSON_TIMES[lesson.lessonNo];
     const dtstart = fmtDateTime(day, sh, sm);
-    const dtend   = fmtDateTime(day, eh, em);
+    const dtend = fmtDateTime(day, eh, em);
 
-    const weekStr = monday.toISOString().slice(0,10).replace(/-/g, "");
-    let uid = `zse-${weekStr}-d${lesson.dayIdx}-l${lesson.lessonNo}-${lesson.subject.toLowerCase().replace(/[^a-z0-9]/g,"")}`;
+    const weekStr = monday.toISOString().slice(0, 10).replace(/-/g, "");
+    let uid = `zse-${weekStr}-d${lesson.dayIdx}-l${lesson.lessonNo}-${lesson.subject.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
     let n = 1;
     while (seen.has(uid)) uid = `${uid}-${n++}`;
     seen.add(uid);
@@ -228,20 +249,23 @@ export default {
     }
 
     if (url.pathname !== "/plan.ics") {
-      return new Response("Użyj /plan.ics?group=2&wf=1&religia=0&holidays=1", { status: 404 });
+      return new Response("Użyj /plan.ics?group=2&wf=1&religia=0&holidays=1", {
+        status: 404,
+      });
     }
 
     const config = {
-      group:    url.searchParams.get("group")    ?? "2",
-      wf:       url.searchParams.get("wf")       ?? "1",
-      religia:  url.searchParams.get("religia")  ?? "0",
+      group: url.searchParams.get("group") ?? "2",
+      wf: url.searchParams.get("wf") ?? "1",
+      religia: url.searchParams.get("religia") ?? "0",
       holidays: url.searchParams.get("holidays") ?? "1",
     };
 
     try {
       const resp = await fetch(PLAN_URL, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15",
+          "User-Agent":
+            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15",
           "Accept-Language": "pl-PL,pl;q=0.9",
         },
         cf: { cacheTtl: 3600, cacheEverything: true }, // cache po stronie CF
@@ -251,9 +275,10 @@ export default {
 
       const html = await resp.text();
       const monday = getCurrentMonday();
-      const skipDays = config.holidays === "1"
-        ? getPolishHolidays(monday.getUTCFullYear())
-        : new Set();
+      const skipDays =
+        config.holidays === "1"
+          ? getPolishHolidays(monday.getUTCFullYear())
+          : new Set();
 
       const lessons = parseHTML(html, config);
       const ics = buildICS(lessons, monday, skipDays);
