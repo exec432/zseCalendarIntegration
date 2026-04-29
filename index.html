@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Plan lekcji ZSE — Konfiguracja</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      :root {
+        --bg: #0e0e0e;
+        --surface: #161616;
+        --border: #2a2a2a;
+        --border-active: #555;
+        --text: #e8e8e8;
+        --text-muted: #666;
+        --text-dim: #444;
+        --accent: #c8ff00;
+        --accent-dark: #9dc200;
+        --font-serif: "Instrument Serif", Georgia, serif;
+        --font-mono: "DM Mono", "Courier New", monospace;
+      }
+
+      html {
+        background: var(--bg);
+        color: var(--text);
+        font-family: var(--font-mono);
+        min-height: 100vh;
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 60px 24px 80px;
+        background:
+          radial-gradient(
+            ellipse 60% 40% at 80% 10%,
+            rgba(200, 255, 0, 0.04) 0%,
+            transparent 60%
+          ),
+          radial-gradient(
+            ellipse 40% 60% at 10% 90%,
+            rgba(200, 255, 0, 0.03) 0%,
+            transparent 60%
+          ),
+          var(--bg);
+      }
+
+      .container {
+        width: 100%;
+        max-width: 520px;
+      }
+
+      /* Header */
+      header {
+        margin-bottom: 56px;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 10px;
+        letter-spacing: 0.15em;
+        text-transform: uppercase;
+        color: var(--accent);
+        border: 1px solid rgba(200, 255, 0, 0.3);
+        padding: 3px 10px;
+        border-radius: 2px;
+        margin-bottom: 20px;
+      }
+      h1 {
+        font-family: var(--font-serif);
+        font-size: clamp(28px, 6vw, 40px);
+        font-weight: 400;
+        line-height: 1.1;
+        color: var(--text);
+        margin-bottom: 12px;
+      }
+      h1 em {
+        font-style: italic;
+        color: var(--accent);
+      }
+      .subtitle {
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.6;
+      }
+
+      /* Sections */
+      .section {
+        margin-bottom: 40px;
+      }
+      .section-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+      .section-num {
+        width: 22px;
+        height: 22px;
+        border: 1px solid var(--border-active);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: var(--text-muted);
+        flex-shrink: 0;
+      }
+      .section-title {
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+
+      /* Option cards */
+      .options {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        transition: border-color 0.15s;
+        gap: 16px;
+      }
+      .option:hover {
+        border-color: var(--border-active);
+      }
+
+      .opt-info {
+        flex: 1;
+        min-width: 0;
+      }
+      .opt-name {
+        font-size: 13px;
+        color: var(--text);
+        margin-bottom: 2px;
+      }
+      .opt-desc {
+        font-size: 11px;
+        color: var(--text-muted);
+        line-height: 1.4;
+      }
+
+      /* Toggle buttons */
+      .toggle {
+        display: flex;
+        gap: 2px;
+        flex-shrink: 0;
+      }
+      .toggle button {
+        padding: 5px 14px;
+        font-size: 11px;
+        font-family: var(--font-mono);
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text-muted);
+        cursor: pointer;
+        border-radius: 2px;
+        transition: all 0.12s;
+        letter-spacing: 0.03em;
+      }
+      .toggle button:hover {
+        border-color: var(--border-active);
+        color: var(--text);
+      }
+      .toggle button.active {
+        background: var(--accent);
+        color: #0e0e0e;
+        border-color: var(--accent);
+        font-weight: 500;
+      }
+
+      /* Divider */
+      .divider {
+        border: none;
+        border-top: 1px solid var(--border);
+        margin: 40px 0;
+      }
+
+      /* URL output */
+      .url-section {
+      }
+      .url-label {
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        margin-bottom: 10px;
+      }
+      .url-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 14px 16px;
+        margin-bottom: 12px;
+      }
+      .url-text {
+        font-size: 11px;
+        color: var(--accent);
+        word-break: break-all;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 18px;
+        font-size: 12px;
+        font-family: var(--font-mono);
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.12s;
+        letter-spacing: 0.03em;
+        text-decoration: none;
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #0e0e0e;
+        border: 1px solid var(--accent);
+        font-weight: 500;
+      }
+      .btn-primary:hover {
+        background: var(--accent-dark);
+        border-color: var(--accent-dark);
+      }
+      .btn-primary.copied {
+        background: #2a4a00;
+        color: var(--accent);
+        border-color: #3a6a00;
+      }
+
+      .btn-ghost {
+        background: transparent;
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+      }
+      .btn-ghost:hover {
+        border-color: var(--border-active);
+        color: var(--text);
+      }
+
+      .hint {
+        margin-top: 20px;
+        padding: 14px 16px;
+        background: rgba(200, 255, 0, 0.04);
+        border: 1px solid rgba(200, 255, 0, 0.12);
+        border-radius: 4px;
+        font-size: 11px;
+        color: var(--text-muted);
+        line-height: 1.7;
+      }
+      .hint strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      /* Footer */
+      footer {
+        margin-top: 60px;
+        font-size: 10px;
+        color: var(--text-dim);
+        text-align: center;
+        letter-spacing: 0.05em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="tag">ZSE Bydgoszcz · 4I</div>
+        <h1>Plan lekcji<br />do <em>kalendarza</em></h1>
+        <p class="subtitle">
+          Skonfiguruj swoje grupy — wygeneruj link do subskrypcji Apple
+          Calendar.
+        </p>
+      </header>
+
+      <!-- SEKCJA 1: Grupy -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-num">1</div>
+          <span class="section-title">Grupy przedmiotowe</span>
+        </div>
+        <div class="options">
+          <div class="option">
+            <div class="opt-info">
+              <div class="opt-name">Główna grupa</div>
+              <div class="opt-desc">
+                j. angielski · ABD · j. niemiecki · informatyka · Pr.Ap.In.
+              </div>
+            </div>
+            <div class="toggle" data-key="group">
+              <button data-val="1">1/2</button>
+              <button data-val="2" class="active">2/2</button>
+            </div>
+          </div>
+
+          <div class="option">
+            <div class="opt-info">
+              <div class="opt-name">Grupa WF</div>
+              <div class="opt-desc">wychowanie fizyczne</div>
+            </div>
+            <div class="toggle" data-key="wf">
+              <button data-val="1" class="active">j1</button>
+              <button data-val="2">j2</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEKCJA 2: Opcjonalne -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-num">2</div>
+          <span class="section-title">Przedmioty opcjonalne</span>
+        </div>
+        <div class="options">
+          <div class="option">
+            <div class="opt-info">
+              <div class="opt-name">Religia</div>
+              <div class="opt-desc">uwzględnij w kalendarzu</div>
+            </div>
+            <div class="toggle" data-key="religia">
+              <button data-val="1">tak</button>
+              <button data-val="0" class="active">nie</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SEKCJA 3: Święta -->
+      <div class="section">
+        <div class="section-header">
+          <div class="section-num">3</div>
+          <span class="section-title">Święta państwowe</span>
+        </div>
+        <div class="options">
+          <div class="option">
+            <div class="opt-info">
+              <div class="opt-name">Pomijaj dni świąteczne</div>
+              <div class="opt-desc">
+                automatycznie usuwa lekcje w dni wolne ustawowo
+              </div>
+            </div>
+            <div class="toggle" data-key="holidays">
+              <button data-val="1" class="active">tak</button>
+              <button data-val="0">nie</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="divider" />
+
+      <!-- URL OUTPUT -->
+      <div class="url-section">
+        <div class="url-label">Twój link do subskrypcji</div>
+        <div class="url-box">
+          <div class="url-text" id="url-display"></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="copy-btn" onclick="copyUrl()">
+            Kopiuj link
+          </button>
+          <button class="btn btn-ghost" onclick="testUrl()">
+            Podgląd .ics ↗
+          </button>
+        </div>
+
+        <div class="hint">
+          <strong>Jak dodać do Apple Calendar:</strong><br />
+          Mac: Plik → Nowa subskrypcja kalendarza → wklej link → Odświeżaj: co
+          dzień<br />
+          iPhone: Ustawienia → Kalendarz → Konta → Dodaj konto → Inne → Dodaj
+          subskr. kal.
+        </div>
+      </div>
+
+      <footer>exec432 · ZSE Bydgoszcz · plan lekcji auto-sync</footer>
+    </div>
+
+    <script>
+      // ── Zmień na URL swojego Cloudflare Workera po deploymencie ──
+      const WORKER_BASE =
+        "https://zse-calendar-integration.exec432.workers.dev/";
+
+      const state = { group: "2", wf: "1", religia: "0", holidays: "1" };
+
+      function updateUrl() {
+        const params = new URLSearchParams(state);
+        const url = `${WORKER_BASE}/plan.ics?${params}`;
+        document.getElementById("url-display").textContent = url;
+      }
+
+      // Obsługa toggleów
+      document.querySelectorAll(".toggle").forEach((toggle) => {
+        toggle.querySelectorAll("button").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            toggle
+              .querySelectorAll("button")
+              .forEach((b) => b.classList.remove("active"));
+            btn.classList.add("active");
+            state[toggle.dataset.key] = btn.dataset.val;
+            updateUrl();
+          });
+        });
+      });
+
+      function copyUrl() {
+        const url = document.getElementById("url-display").textContent;
+        navigator.clipboard.writeText(url).then(() => {
+          const btn = document.getElementById("copy-btn");
+          btn.textContent = "✓ Skopiowano";
+          btn.classList.add("copied");
+          setTimeout(() => {
+            btn.textContent = "Kopiuj link";
+            btn.classList.remove("copied");
+          }, 2500);
+        });
+      }
+
+      function testUrl() {
+        const url = document.getElementById("url-display").textContent;
+        window.open(url, "_blank");
+      }
+
+      updateUrl();
+    </script>
+  </body>
+</html>
